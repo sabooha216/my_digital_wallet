@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_digital_wallet/screens/login_screen.dart';
 
 import 'constants/colors.dart';
 import 'screens/home_screen.dart';
@@ -55,10 +56,10 @@ class _MyDigitalWalletAppState extends State<MyDigitalWalletApp> {
         ),
       ),
 
-      home: HomeScreen(
+      
+home: LoginScreen(
         onThemeChanged: _toggleTheme,
-        isDarkMode: isDarkMode,
       ),
-    );
-  }
-}
+    ); // هذا القوس يغلق الـ MaterialApp
+  } // هذا القوس يغلق دالة الـ build
+} // هذا القوس يغلق الـ class
