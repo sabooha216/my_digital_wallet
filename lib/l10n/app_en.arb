@@ -1,5 +1,12 @@
 {
-  "welcomeMessage": "Welcome",
-  "loginSubtitle": "Login to your Digital Wallet",
-  "loginButton": "Login"
+  "welcomeMessage": "Login to your Digital Wallet",
+  "myWallet": "My Wallet",
+  "welcome": "Welcome 👋",
+  "currentBalance": "Current Balance",
+  "send": "Send",
+  "receive": "Receive",
+  "bills": "Bills",
+  "topUp": "Top Up",
+  "recentTransactions": "Recent Transactions",
+  "viewAll": "View All"
 }

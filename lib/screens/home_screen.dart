@@ -1,32 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // استدعاء مكتبة الترجمة
 
 class HomeScreen extends StatelessWidget {
   final VoidCallback onThemeChanged;
   final bool isDarkMode;
-  final VoidCallback onLanguageChanged; // استقبال دالة تغيير اللغة
+  final VoidCallback onLanguageChanged; 
 
   const HomeScreen({
     super.key,
     required this.onThemeChanged,
     required this.isDarkMode,
-    required this.onLanguageChanged, // أضفناه هنا
+    required this.onLanguageChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    // تخزين الترجمة في متغير لسهولة الاستخدام وتقليل طول الكود
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
-      // الشريط العلوي (AppBar)
       appBar: AppBar(
-        title: const Text('محفظتي', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(l10n.myWallet, style: const TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
-        backgroundColor: Colors.transparent, // شفاف ليأخذ لون الخلفية
+        backgroundColor: Colors.transparent, 
         actions: [
-          // زر تغيير اللغة (كرة أرضية)
           IconButton(
             icon: const Icon(Icons.language),
             onPressed: onLanguageChanged,
           ),
-          // زر المظهر الليلي/النهاري
           IconButton(
             icon: Icon(isDarkMode ? Icons.light_mode : Icons.dark_mode),
             onPressed: onThemeChanged,
@@ -41,20 +42,19 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       
-      // جسم الشاشة (قابل للتمرير لتجنب الأخطاء في الشاشات الصغيرة)
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // رسالة الترحيب
-            const Text(
-              'مرحباً، صباح 👋', 
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            // رسالة الترحيب أصبحت تقرأ من ملف الترجمة (عامة لأي مستخدم)
+            Text(
+              l10n.welcome, 
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
 
-            // بطاقة الرصيد (Balance Card)
+            // بطاقة الرصيد
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -76,7 +76,7 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('الرصيد الحالي', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                  Text(l10n.currentBalance, style: const TextStyle(color: Colors.white70, fontSize: 16)),
                   const SizedBox(height: 8),
                   const Text('\$1,250.00', style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
@@ -92,29 +92,29 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 30),
 
-            // أزرار العمليات السريعة (Quick Actions)
+            // أزرار العمليات السريعة
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildActionButton(context, Icons.send, 'إرسال', Colors.orange),
-                _buildActionButton(context, Icons.account_balance_wallet, 'استقبال', Colors.green),
-                _buildActionButton(context, Icons.receipt, 'فواتير', Colors.purple),
-                _buildActionButton(context, Icons.add_circle_outline, 'شحن', Colors.blue),
+                _buildActionButton(context, Icons.send, l10n.send, Colors.orange),
+                _buildActionButton(context, Icons.account_balance_wallet, l10n.receive, Colors.green),
+                _buildActionButton(context, Icons.receipt, l10n.bills, Colors.purple),
+                _buildActionButton(context, Icons.add_circle_outline, l10n.topUp, Colors.blue),
               ],
             ),
             const SizedBox(height: 30),
 
-            // سجل العمليات (Transactions)
+            // عنوان سجل العمليات
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('آخر العمليات', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                TextButton(onPressed: () {}, child: const Text('عرض الكل')),
+                Text(l10n.recentTransactions, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                TextButton(onPressed: () {}, child: Text(l10n.viewAll)),
               ],
             ),
             const SizedBox(height: 10),
 
-            // قائمة العمليات الوهمية (للتصميم حالياً)
+            // قائمة العمليات الوهمية (تركنا بياناتها ثابتة مؤقتاً لتتخيلي شكل التصميم)
             _buildTransactionItem('شراء قهوة', 'اليوم، 09:30 ص', '-\$4.50', Colors.red, Icons.coffee),
             _buildTransactionItem('تحويل من أحمد', 'أمس، 02:15 م', '+\$150.00', Colors.green, Icons.arrow_downward),
             _buildTransactionItem('اشتراك منصة تعليمية', '28 أغسطس', '-\$12.99', Colors.red, Icons.school),
@@ -124,9 +124,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // --- دوال مساعدة لترتيب الكود وتجنب التكرار ---
-
-  // دالة تصميم زر العملية السريعة
   Widget _buildActionButton(BuildContext context, IconData icon, String label, Color color) {
     return Column(
       children: [
@@ -144,7 +141,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // دالة تصميم صف عملية الدفع
   Widget _buildTransactionItem(String title, String date, String amount, Color amountColor, IconData icon) {
     return Card(
       elevation: 0,

@@ -4,7 +4,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 class LoginScreen extends StatefulWidget {
   final VoidCallback onThemeChanged;
   final bool isDarkMode;
-  final VoidCallback onLogin;
+  final Function(bool) onLogin; // التعديل: الدالة أصبحت تستقبل قيمة المربع
 
   const LoginScreen({
     super.key,
@@ -20,12 +20,10 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool rememberMe = false;
 
-  // تعريف المفتاح والمتحكمات
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // تنظيف الذاكرة
   @override
   void dispose() {
     _emailController.dispose();
@@ -41,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Form(
-              key: _formKey, // ربط الـ Form بالمفتاح
+              key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -113,7 +111,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        widget.onLogin(); // تنفيذ الدخول إذا كانت الحقول صحيحة
+                        // التعديل: نرسل حالة (rememberMe) للملف الرئيسي
+                        widget.onLogin(rememberMe); 
                       }
                     }, 
                     style: ElevatedButton.styleFrom(

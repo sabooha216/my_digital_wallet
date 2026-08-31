@@ -1,5 +1,12 @@
 {
-  "welcomeMessage": "أهلاً بك",
-  "loginSubtitle": "سجل دخولك للمحفظة الرقمية",
-  "loginButton": "تسجيل الدخول"
+  "welcomeMessage": "سجل دخولك للمحفظة الرقمية", 
+  "myWallet": "محفظتي",
+  "welcome": "مرحباً بك 👋",
+  "currentBalance": "الرصيد الحالي",
+  "send": "إرسال",
+  "receive": "استقبال",
+  "bills": "فواتير",
+  "topUp": "شحن",
+  "recentTransactions": "آخر العمليات",
+  "viewAll": "عرض الكل"
 }
