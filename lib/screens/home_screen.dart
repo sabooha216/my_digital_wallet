@@ -1,25 +1,32 @@
-
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatelessWidget {
   final VoidCallback onThemeChanged;
   final bool isDarkMode;
+  final VoidCallback onLanguageChanged; // استقبال دالة تغيير اللغة
 
   const HomeScreen({
     super.key,
     required this.onThemeChanged,
     required this.isDarkMode,
+    required this.onLanguageChanged, // أضفناه هنا
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 1. الشريط العلوي (AppBar)
+      // الشريط العلوي (AppBar)
       appBar: AppBar(
         title: const Text('محفظتي', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         backgroundColor: Colors.transparent, // شفاف ليأخذ لون الخلفية
         actions: [
+          // زر تغيير اللغة (كرة أرضية)
+          IconButton(
+            icon: const Icon(Icons.language),
+            onPressed: onLanguageChanged,
+          ),
+          // زر المظهر الليلي/النهاري
           IconButton(
             icon: Icon(isDarkMode ? Icons.light_mode : Icons.dark_mode),
             onPressed: onThemeChanged,
@@ -47,7 +54,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // 2. بطاقة الرصيد (Balance Card)
+            // بطاقة الرصيد (Balance Card)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -85,7 +92,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 30),
 
-            // 3. أزرار العمليات السريعة (Quick Actions)
+            // أزرار العمليات السريعة (Quick Actions)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -97,7 +104,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 30),
 
-            // 4. سجل العمليات (Transactions)
+            // سجل العمليات (Transactions)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

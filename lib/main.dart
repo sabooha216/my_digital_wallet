@@ -18,11 +18,23 @@ class MyDigitalWalletApp extends StatefulWidget {
 
 class _MyDigitalWalletAppState extends State<MyDigitalWalletApp> {
   bool isDarkMode = false;
-  bool isLoggedIn = false;
+  bool isLoggedIn = true; // جعلناها true مؤقتاً لتظهر الشاشة الرئيسية مباشرة
+
+  Locale appLocale = const Locale('ar'); // اللغة الافتراضية
 
   void _toggleTheme() {
     setState(() {
       isDarkMode = !isDarkMode;
+    });
+  }
+
+  void _changeLanguage() {
+    setState(() {
+      if (appLocale.languageCode == 'ar') {
+        appLocale = const Locale('en');
+      } else {
+        appLocale = const Locale('ar');
+      }
     });
   }
 
@@ -31,7 +43,9 @@ class _MyDigitalWalletAppState extends State<MyDigitalWalletApp> {
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('ar'),
+      
+      locale: appLocale, // ربط التطبيق بمتغير اللغة
+      
       debugShowCheckedModeBanner: false,
       title: 'Digital Wallet',
 
@@ -61,6 +75,7 @@ class _MyDigitalWalletAppState extends State<MyDigitalWalletApp> {
           ? HomeScreen(
               onThemeChanged: _toggleTheme,
               isDarkMode: isDarkMode,
+              onLanguageChanged: _changeLanguage, // تمرير دالة تغيير اللغة
             )
           : LoginScreen(
               onThemeChanged: _toggleTheme,
