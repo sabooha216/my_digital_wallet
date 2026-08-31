@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:my_digital_wallet/screens/login_screen.dart';
-
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'constants/colors.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() {
   runApp(const MyDigitalWalletApp());
@@ -17,6 +18,7 @@ class MyDigitalWalletApp extends StatefulWidget {
 
 class _MyDigitalWalletAppState extends State<MyDigitalWalletApp> {
   bool isDarkMode = false;
+  bool isLoggedIn = false;
 
   void _toggleTheme() {
     setState(() {
@@ -27,14 +29,14 @@ class _MyDigitalWalletAppState extends State<MyDigitalWalletApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('ar'),
       debugShowCheckedModeBanner: false,
       title: 'Digital Wallet',
 
-      themeMode: isDarkMode
-          ? ThemeMode.dark
-          : ThemeMode.light,
+      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
 
-      // الوضع الفاتح
       theme: ThemeData(
         brightness: Brightness.light,
         fontFamily: 'Roboto',
@@ -45,7 +47,6 @@ class _MyDigitalWalletAppState extends State<MyDigitalWalletApp> {
         ),
       ),
 
-      // الوضع الداكن
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'Roboto',
@@ -56,10 +57,20 @@ class _MyDigitalWalletAppState extends State<MyDigitalWalletApp> {
         ),
       ),
 
-      
-home: LoginScreen(
-        onThemeChanged: _toggleTheme,
-      ),
-    ); // هذا القوس يغلق الـ MaterialApp
-  } // هذا القوس يغلق دالة الـ build
-} // هذا القوس يغلق الـ class
+      home: isLoggedIn
+          ? HomeScreen(
+              onThemeChanged: _toggleTheme,
+              isDarkMode: isDarkMode,
+            )
+          : LoginScreen(
+              onThemeChanged: _toggleTheme,
+              isDarkMode: isDarkMode,
+              onLogin: () {
+                setState(() {
+                  isLoggedIn = true;
+                });
+              },
+            ),
+    );
+  }
+}
