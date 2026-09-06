@@ -155,12 +155,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () async {
                       if (_formKey.currentState!.validate()) {
                         final email = _emailController.text.trim();
+<<<<<<< HEAD
                         final username = email.split('@').first;
 
                         // استدعاء دالة قاعدة البيانات
                         await _processLogin(username);
 
                         // استكمال عملية تسجيل الدخول وتغيير الشاشة
+=======
+
+                        // أخذ اسم المستخدم من الجزء الموجود قبل @
+                        final username = email.split('@').first;
+
+>>>>>>> 72b0b3f55fe009f6c5df6c2529b4376b811c6fbe
                         widget.onLogin(rememberMe, username);
                       }
                     },
