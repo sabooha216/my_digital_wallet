@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+// إضافة استدعاء ملف قاعدة البيانات
+import '../database/database_helper.dart'; 
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onThemeChanged;
   final bool isDarkMode;
-  final Function(bool) onLogin; // التعديل: الدالة أصبحت تستقبل قيمة المربع
+  final Function(bool, String) onLogin;
 
   const LoginScreen({
     super.key,
@@ -31,6 +33,25 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // دالة للتعامل مع قاعدة البيانات عند تسجيل الدخول
+  Future<void> _processLogin(String username) async {
+    final dbHelper = DatabaseHelper.instance;
+    
+    // 1. البحث عن المستخدم في قاعدة البيانات
+    final existingUser = await dbHelper.getUserByName(username);
+
+    // 2. إذا كان المستخدم غير موجود، نقوم بإنشاء حساب جديد له
+    if (existingUser == null) {
+      await dbHelper.insertUser({
+        DatabaseHelper.columnName: username,
+        DatabaseHelper.columnBalance: 1000.0, // رصيد افتراضي للمستخدم الجديد
+      });
+      print('تم تسجيل مستخدم جديد: $username برصيد 1000'); // للتحقق في الكونسول
+    } else {
+      print('أهلاً بك مجدداً: $username'); // للتحقق في الكونسول
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,25 +71,38 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Colors.blueAccent,
                   ),
                   const SizedBox(height: 32),
+
                   Text(
                     AppLocalizations.of(context)!.welcomeMessage,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
+
                   const SizedBox(height: 8),
+
                   const Text(
                     'سجل دخولك للمحفظة الرقمية',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
                   ),
+
                   const SizedBox(height: 32),
+
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: 'البريد الإلكتروني',
                       prefixIcon: const Icon(Icons.email),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -77,14 +111,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
+
                   const SizedBox(height: 16),
+
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
                     decoration: InputDecoration(
                       labelText: 'كلمة المرور',
                       prefixIcon: const Icon(Icons.lock),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -93,7 +131,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
+
                   const SizedBox(height: 16),
+
                   Row(
                     children: [
                       Checkbox(
@@ -107,19 +147,40 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Text('تذكرني (حفظ الجلسة)'),
                     ],
                   ),
+
                   const SizedBox(height: 24),
+
                   ElevatedButton(
-                    onPressed: () {
+                    // تم تحويل الدالة إلى async لأننا نتعامل مع قاعدة بيانات
+                    onPressed: () async {
                       if (_formKey.currentState!.validate()) {
-                        // التعديل: نرسل حالة (rememberMe) للملف الرئيسي
-                        widget.onLogin(rememberMe); 
+                        final email = _emailController.text.trim();
+<<<<<<< HEAD
+                        final username = email.split('@').first;
+
+                        // استدعاء دالة قاعدة البيانات
+                        await _processLogin(username);
+
+                        // استكمال عملية تسجيل الدخول وتغيير الشاشة
+=======
+
+                        // أخذ اسم المستخدم من الجزء الموجود قبل @
+                        final username = email.split('@').first;
+
+>>>>>>> 72b0b3f55fe009f6c5df6c2529b4376b811c6fbe
+                        widget.onLogin(rememberMe, username);
                       }
-                    }, 
+                    },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: const Text('تسجيل الدخول', style: TextStyle(fontSize: 18)),
+                    child: const Text(
+                      'تسجيل الدخول',
+                      style: TextStyle(fontSize: 18),
+                    ),
                   ),
                 ],
               ),
