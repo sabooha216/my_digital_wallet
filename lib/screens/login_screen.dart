@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+// إضافة استدعاء ملف قاعدة البيانات
+import '../database/database_helper.dart'; 
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onThemeChanged;
@@ -29,6 +31,25 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  // دالة للتعامل مع قاعدة البيانات عند تسجيل الدخول
+  Future<void> _processLogin(String username) async {
+    final dbHelper = DatabaseHelper.instance;
+    
+    // 1. البحث عن المستخدم في قاعدة البيانات
+    final existingUser = await dbHelper.getUserByName(username);
+
+    // 2. إذا كان المستخدم غير موجود، نقوم بإنشاء حساب جديد له
+    if (existingUser == null) {
+      await dbHelper.insertUser({
+        DatabaseHelper.columnName: username,
+        DatabaseHelper.columnBalance: 1000.0, // رصيد افتراضي للمستخدم الجديد
+      });
+      print('تم تسجيل مستخدم جديد: $username برصيد 1000'); // للتحقق في الكونسول
+    } else {
+      print('أهلاً بك مجدداً: $username'); // للتحقق في الكونسول
+    }
   }
 
   @override
@@ -130,13 +151,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 24),
 
                   ElevatedButton(
-                    onPressed: () {
+                    // تم تحويل الدالة إلى async لأننا نتعامل مع قاعدة بيانات
+                    onPressed: () async {
                       if (_formKey.currentState!.validate()) {
                         final email = _emailController.text.trim();
-
-                        // أخذ اسم المستخدم من الجزء الموجود قبل @
                         final username = email.split('@').first;
 
+                        // استدعاء دالة قاعدة البيانات
+                        await _processLogin(username);
+
+                        // استكمال عملية تسجيل الدخول وتغيير الشاشة
                         widget.onLogin(rememberMe, username);
                       }
                     },
