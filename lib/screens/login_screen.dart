@@ -4,7 +4,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 class LoginScreen extends StatefulWidget {
   final VoidCallback onThemeChanged;
   final bool isDarkMode;
-  final Function(bool) onLogin; // التعديل: الدالة أصبحت تستقبل قيمة المربع
+  final Function(bool, String) onLogin;
 
   const LoginScreen({
     super.key,
@@ -50,25 +50,38 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Colors.blueAccent,
                   ),
                   const SizedBox(height: 32),
+
                   Text(
                     AppLocalizations.of(context)!.welcomeMessage,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
+
                   const SizedBox(height: 8),
+
                   const Text(
                     'سجل دخولك للمحفظة الرقمية',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
                   ),
+
                   const SizedBox(height: 32),
+
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: 'البريد الإلكتروني',
                       prefixIcon: const Icon(Icons.email),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -77,14 +90,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
+
                   const SizedBox(height: 16),
+
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
                     decoration: InputDecoration(
                       labelText: 'كلمة المرور',
                       prefixIcon: const Icon(Icons.lock),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -93,7 +110,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
+
                   const SizedBox(height: 16),
+
                   Row(
                     children: [
                       Checkbox(
@@ -107,19 +126,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Text('تذكرني (حفظ الجلسة)'),
                     ],
                   ),
+
                   const SizedBox(height: 24),
+
                   ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        // التعديل: نرسل حالة (rememberMe) للملف الرئيسي
-                        widget.onLogin(rememberMe); 
+                        final email = _emailController.text.trim();
+
+                        // أخذ اسم المستخدم من الجزء الموجود قبل @
+                        final username = email.split('@').first;
+
+                        widget.onLogin(rememberMe, username);
                       }
-                    }, 
+                    },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: const Text('تسجيل الدخول', style: TextStyle(fontSize: 18)),
+                    child: const Text(
+                      'تسجيل الدخول',
+                      style: TextStyle(fontSize: 18),
+                    ),
                   ),
                 ],
               ),
