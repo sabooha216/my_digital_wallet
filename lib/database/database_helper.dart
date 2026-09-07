@@ -4,22 +4,20 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
-  // تحديث إلى v4 لاعتماد البيانات الشخصية الجديدة
-  static const _databaseName = "wallet_database_v4.db";
+  // تم تغيير اسم القاعدة إلى v5 لحل مشكلة التعليق في الحفظ
+  static const _databaseName = "wallet_database_v5.db";
   static const _databaseVersion = 1;
 
-  // 1. جدول المستخدمين (بالحقول الجديدة)
   static const tableUsers = 'users';
   static const columnId = 'id';
   static const columnName = 'name';
   static const columnBalance = 'balance';
-  static const columnFullName = 'full_name'; // الاسم الرباعي
-  static const columnDob = 'dob'; // تاريخ الميلاد
-  static const columnPhone = 'phone'; // رقم الجوال
-  static const columnBirthPlaceDate = 'birth_place_date'; // مكان وتاريخ الميلاد
-  static const columnCurrentLocation = 'current_location'; // الموقع الحالي
+  static const columnFullName = 'full_name'; 
+  static const columnDob = 'dob'; 
+  static const columnPhone = 'phone'; 
+  static const columnBirthPlaceDate = 'birth_place_date'; 
+  static const columnCurrentLocation = 'current_location'; 
 
-  // 2. جدول العمليات
   static const tableTransactions = 'transactions';
   static const transId = 'id';
   static const transUsername = 'username'; 
@@ -100,5 +98,30 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getTransactionsByUser(String username) async {
     Database db = await instance.database;
     return await db.query(tableTransactions, where: '$transUsername = ?', whereArgs: [username], orderBy: '$transId DESC');
+  }
+
+  // ==========================================
+  // دوال التعديل والحذف
+  // ==========================================
+  Future<int> updateUserProfile(String username, String fullName, String dob, String phone, String birthPlace, String location) async {
+    Database db = await instance.database;
+    return await db.update(
+      tableUsers,
+      {
+        columnFullName: fullName,
+        columnDob: dob,
+        columnPhone: phone,
+        columnBirthPlaceDate: birthPlace,
+        columnCurrentLocation: location,
+      },
+      where: '$columnName = ?',
+      whereArgs: [username],
+    );
+  }
+
+  Future<int> deleteUser(String username) async {
+    Database db = await instance.database;
+    await db.delete(tableTransactions, where: '$transUsername = ?', whereArgs: [username]);
+    return await db.delete(tableUsers, where: '$columnName = ?', whereArgs: [username]);
   }
 }
