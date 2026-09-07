@@ -3,11 +3,19 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'constants/colors.dart';
+import 'dart:io';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart'; // تمت إضافة مكتبة الويندوز هنا
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // تمت إضافة هذا الجزء لتهيئة قاعدة البيانات للعمل على الويندوز بنجاح
+  if (Platform.isWindows || Platform.isLinux) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
 
   final prefs = await SharedPreferences.getInstance();
 
