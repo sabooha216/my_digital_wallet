@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/app_localizations.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../database/database_helper.dart';
@@ -36,8 +39,11 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _transactions = [];
   String _searchQuery = '';
 
-  // عدد الإشعارات غير المقروءة
   int _unreadNotifications = 0;
+
+  List<Map<String, dynamic>> _savingsGoals = [];
+
+  String _profileImagePath = '';
 
   @override
   void initState() {
@@ -58,9 +64,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return value;
   }
 
-  // ==========================================
-  // تحميل بيانات المستخدم والعمليات والإشعارات
-  // ==========================================
   Future<void> _loadData() async {
     final dbHelper = DatabaseHelper.instance;
 
@@ -78,6 +81,17 @@ class _HomeScreenState extends State<HomeScreen> {
             user[DatabaseHelper.columnBirthPlaceDate] ?? 'غير محدد';
         _currentLocation =
             user[DatabaseHelper.columnCurrentLocation] ?? 'غير محدد';
+      });
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+
+    final savedImagePath =
+        prefs.getString('profile_image_${widget.username}') ?? '';
+
+    if (mounted) {
+      setState(() {
+        _profileImagePath = savedImagePath;
       });
     }
 
@@ -117,7 +131,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
 
-    // تحميل عدد الإشعارات غير المقروءة
     final unreadCount =
         await dbHelper.getUnreadNotificationCount(widget.username);
 
@@ -126,11 +139,96 @@ class _HomeScreenState extends State<HomeScreen> {
         _unreadNotifications = unreadCount;
       });
     }
+
+    final goals =
+        await dbHelper.getSavingsGoalsByUser(widget.username);
+
+    if (mounted) {
+      setState(() {
+        _savingsGoals = goals;
+      });
+    }
   }
 
   // ==========================================
-  // معالجة العملية المالية + إنشاء الإشعار
+  // اختيار صورة الملف الشخصي
   // ==========================================
+  Future<void> _pickProfileImage() async {
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.image,
+      );
+
+      if (file == null || file.path == null) {
+        return;
+      }
+
+      final path = file.path!;
+
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.setString(
+        'profile_image_${widget.username}',
+        path,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _profileImagePath = path;
+      });
+
+      _showMessage(
+        _tr(
+          'تم تغيير الصورة الشخصية بنجاح ✅',
+          'Profile photo updated successfully ✅',
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      _showMessage(
+        _tr(
+          'حدث خطأ أثناء اختيار الصورة',
+          'Error selecting the image',
+        ),
+      );
+    }
+  }
+
+  ImageProvider? _getProfileImage() {
+    if (_profileImagePath.isEmpty) {
+      return null;
+    }
+
+    final file = File(_profileImagePath);
+
+    if (!file.existsSync()) {
+      return null;
+    }
+
+    return FileImage(file);
+  }
+
+  Widget _buildProfileAvatar({
+    double radius = 20,
+  }) {
+    final image = _getProfileImage();
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: const Color(0xFF4A00E0),
+      backgroundImage: image,
+      child: image == null
+          ? Icon(
+              Icons.person,
+              color: Colors.white,
+              size: radius,
+            )
+          : null,
+    );
+  }
+
   Future<void> _processTransaction({
     required String title,
     required double amount,
@@ -138,7 +236,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }) async {
     final dbHelper = DatabaseHelper.instance;
 
-    // تحديث الرصيد
     double newBalance = _balance + amount;
 
     await dbHelper.updateBalance(
@@ -146,7 +243,6 @@ class _HomeScreenState extends State<HomeScreen> {
       newBalance,
     );
 
-    // إنشاء التاريخ والوقت
     final now = DateTime.now();
 
     final dateStr =
@@ -156,7 +252,6 @@ class _HomeScreenState extends State<HomeScreen> {
         '${now.hour}:'
         '${now.minute.toString().padLeft(2, '0')}';
 
-    // حفظ العملية
     await dbHelper.insertTransaction({
       DatabaseHelper.transUsername: widget.username,
       DatabaseHelper.transTitle: title,
@@ -164,10 +259,6 @@ class _HomeScreenState extends State<HomeScreen> {
       DatabaseHelper.transDate: dateStr,
       DatabaseHelper.transType: type,
     });
-
-    // ==========================================
-    // إنشاء بيانات الإشعار
-    // ==========================================
 
     String notificationTitle;
     String notificationMessage;
@@ -226,10 +317,6 @@ class _HomeScreenState extends State<HomeScreen> {
         );
     }
 
-    // ==========================================
-    // حفظ الإشعار في قاعدة البيانات
-    // ==========================================
-
     await dbHelper.insertNotification({
       DatabaseHelper.notificationUsername: widget.username,
       DatabaseHelper.notificationTitle: notificationTitle,
@@ -238,13 +325,9 @@ class _HomeScreenState extends State<HomeScreen> {
       DatabaseHelper.notificationIsRead: 0,
     });
 
-    // تحديث الصفحة
     await _loadData();
   }
 
-  // ==========================================
-  // فتح شاشة الإشعارات
-  // ==========================================
   Future<void> _showNotifications() async {
     final notifications =
         await DatabaseHelper.instance.getNotificationsByUser(
@@ -269,7 +352,6 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              // الخط العلوي
               Container(
                 width: 50,
                 height: 5,
@@ -278,10 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              // العنوان
               Row(
                 mainAxisAlignment:
                     MainAxisAlignment.spaceBetween,
@@ -293,7 +372,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   if (notifications.isNotEmpty)
                     TextButton(
                       onPressed: () async {
@@ -324,10 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                 ],
               ),
-
               const SizedBox(height: 10),
-
-              // قائمة الإشعارات
               Expanded(
                 child: notifications.isEmpty
                     ? Center(
@@ -402,10 +477,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   borderRadius:
                                       BorderRadius.circular(12),
                                 ),
-                                child: Icon(
+                                child: const Icon(
                                   Icons.notifications,
-                                  color:
-                                      const Color(0xFF4A00E0),
+                                  color: Color(0xFF4A00E0),
                                 ),
                               ),
                               title: Text(
@@ -489,6 +563,661 @@ class _HomeScreenState extends State<HomeScreen> {
     await _loadData();
   }
 
+  Widget _buildSavingsGoalsSection() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 30),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.grey.withOpacity(0.1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _tr(
+                  'أهداف الادخار 🎯',
+                  'Savings Goals 🎯',
+                ),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                onPressed: _showAddSavingsGoalDialog,
+                icon: const Icon(
+                  Icons.add_circle,
+                  color: Color(0xFF4A00E0),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_savingsGoals.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4A00E0)
+                    .withOpacity(0.06),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.savings_outlined,
+                    size: 50,
+                    color: Color(0xFF4A00E0),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    _tr(
+                      'لم تضيفي أي هدف ادخار بعد',
+                      'You have no savings goals yet',
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _showAddSavingsGoalDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          const Color(0xFF4A00E0),
+                    ),
+                    icon: const Icon(
+                      Icons.add,
+                      color: Colors.white,
+                    ),
+                    label: Text(
+                      _tr(
+                        'إضافة هدف',
+                        'Add Goal',
+                      ),
+                      style: const TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ..._savingsGoals.map(
+              (goal) => _buildSavingsGoalCard(goal),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddSavingsGoalDialog() {
+    final nameController = TextEditingController();
+    final targetController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            _tr(
+              'إضافة هدف ادخار 🎯',
+              'Add Savings Goal 🎯',
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: _tr(
+                    'اسم الهدف',
+                    'Goal Name',
+                  ),
+                  hintText: _tr(
+                    'مثال: شراء هاتف',
+                    'Example: Buy a phone',
+                  ),
+                  prefixIcon:
+                      const Icon(Icons.flag_outlined),
+                  border:
+                      const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: targetController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: _tr(
+                    'المبلغ المستهدف',
+                    'Target Amount',
+                  ),
+                  prefixIcon:
+                      const Icon(Icons.attach_money),
+                  border:
+                      const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext),
+              child: Text(
+                _tr('إلغاء', 'Cancel'),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    const Color(0xFF4A00E0),
+              ),
+              onPressed: () async {
+                final name =
+                    nameController.text.trim();
+
+                final target =
+                    double.tryParse(
+                  targetController.text.trim(),
+                );
+
+                if (name.isEmpty ||
+                    target == null ||
+                    target <= 0) {
+                  _showMessage(
+                    _tr(
+                      'أدخلي اسم الهدف والمبلغ بشكل صحيح',
+                      'Please enter a valid goal name and amount',
+                    ),
+                  );
+                  return;
+                }
+
+                try {
+                  await DatabaseHelper.instance
+                      .insertSavingsGoal({
+                    DatabaseHelper.goalUsername:
+                        widget.username,
+                    DatabaseHelper.goalName:
+                        name,
+                    DatabaseHelper.goalTargetAmount:
+                        target,
+                    DatabaseHelper.goalSavedAmount:
+                        0.0,
+                    DatabaseHelper.goalDate:
+                        DateTime.now()
+                            .toIso8601String(),
+                  });
+
+                  if (!mounted) return;
+
+                  Navigator.pop(dialogContext);
+
+                  await _loadData();
+
+                  if (!mounted) return;
+
+                  _showMessage(
+                    _tr(
+                      'تمت إضافة هدف الادخار بنجاح 🎯',
+                      'Savings goal added successfully 🎯',
+                    ),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+
+                  _showMessage(
+                    _tr(
+                      'حدث خطأ أثناء إضافة الهدف',
+                      'Error adding savings goal',
+                    ),
+                  );
+                }
+              },
+              child: Text(
+                _tr(
+                  'إضافة الهدف',
+                  'Add Goal',
+                ),
+                style: const TextStyle(
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSavingsGoalCard(
+    Map<String, dynamic> goal,
+  ) {
+    final int id =
+        (goal[DatabaseHelper.goalId] as num).toInt();
+
+    final String name =
+        goal[DatabaseHelper.goalName].toString();
+
+    final double target =
+        (goal[DatabaseHelper.goalTargetAmount] as num)
+            .toDouble();
+
+    final double saved =
+        (goal[DatabaseHelper.goalSavedAmount] as num)
+            .toDouble();
+
+    final double progress =
+        target <= 0 ? 0 : (saved / target).clamp(0.0, 1.0);
+
+    final double remaining =
+        (target - saved).clamp(0.0, target);
+
+    final bool completed =
+        saved >= target;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: completed
+              ? Colors.green.withOpacity(0.35)
+              : const Color(0xFF4A00E0)
+                  .withOpacity(0.15),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: completed
+                      ? Colors.green.withOpacity(0.1)
+                      : const Color(0xFF4A00E0)
+                          .withOpacity(0.1),
+                  borderRadius:
+                      BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  completed
+                      ? Icons.check_circle
+                      : Icons.savings_outlined,
+                  color: completed
+                      ? Colors.green
+                      : const Color(0xFF4A00E0),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: _tr(
+                  'حذف الهدف',
+                  'Delete Goal',
+                ),
+                onPressed: () =>
+                    _confirmDeleteSavingsGoal(id, name),
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          LinearProgressIndicator(
+            value: progress,
+            minHeight: 10,
+            borderRadius:
+                BorderRadius.circular(10),
+            backgroundColor:
+                Colors.grey.withOpacity(0.15),
+            valueColor:
+                AlwaysStoppedAnimation<Color>(
+              completed
+                  ? Colors.green
+                  : const Color(0xFF4A00E0),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '\$${saved.toStringAsFixed(2)} / \$${target.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                '${(progress * 100).toStringAsFixed(0)}%',
+                style: TextStyle(
+                  color: completed
+                      ? Colors.green
+                      : const Color(0xFF4A00E0),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            completed
+                ? _tr(
+                    '🎉 تم تحقيق الهدف بالكامل!',
+                    '🎉 Goal completed!',
+                  )
+                : _tr(
+                    'المتبقي: \$${remaining.toStringAsFixed(2)}',
+                    'Remaining: \$${remaining.toStringAsFixed(2)}',
+                  ),
+            style: TextStyle(
+              color: completed
+                  ? Colors.green
+                  : Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (!completed) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () =>
+                    _showAddSavingsAmountDialog(
+                  id,
+                  name,
+                  saved,
+                  target,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      const Color(0xFF4A00E0),
+                ),
+                icon: const Icon(
+                  Icons.add,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  _tr(
+                    'إضافة مبلغ للهدف',
+                    'Add Money',
+                  ),
+                  style: const TextStyle(
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showAddSavingsAmountDialog(
+    int goalId,
+    String goalName,
+    double saved,
+    double target,
+  ) {
+    final amountController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            _tr(
+              'إضافة مبلغ 🎯',
+              'Add Money 🎯',
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: [
+              Text(
+                goalName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _tr(
+                  'المدخر حاليًا: \$${saved.toStringAsFixed(2)}',
+                  'Currently saved: \$${saved.toStringAsFixed(2)}',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _tr(
+                  'المبلغ المستهدف: \$${target.toStringAsFixed(2)}',
+                  'Target: \$${target.toStringAsFixed(2)}',
+                ),
+                style: const TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: amountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: _tr(
+                    'المبلغ المراد إضافته',
+                    'Amount to add',
+                  ),
+                  prefixIcon:
+                      const Icon(Icons.attach_money),
+                  border:
+                      const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext),
+              child: Text(
+                _tr('إلغاء', 'Cancel'),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    const Color(0xFF4A00E0),
+              ),
+              onPressed: () async {
+                final amount =
+                    double.tryParse(
+                  amountController.text.trim(),
+                );
+
+                if (amount == null || amount <= 0) {
+                  _showMessage(
+                    _tr(
+                      'أدخلي مبلغًا صحيحًا',
+                      'Please enter a valid amount',
+                    ),
+                  );
+                  return;
+                }
+
+                final double newSaved =
+                    (saved + amount)
+                        .clamp(0.0, target)
+                        .toDouble();
+
+                try {
+                  await DatabaseHelper.instance
+                      .updateSavingsGoalAmount(
+                    goalId,
+                    newSaved,
+                  );
+
+                  if (!mounted) return;
+
+                  Navigator.pop(dialogContext);
+
+                  await _loadData();
+
+                  if (!mounted) return;
+
+                  if (newSaved >= target) {
+                    _showMessage(
+                      _tr(
+                        '🎉 مبروك! تم تحقيق هدف "$goalName" بالكامل',
+                        '🎉 Congratulations! "$goalName" is completed',
+                      ),
+                    );
+                  } else {
+                    _showMessage(
+                      _tr(
+                        'تم تحديث مبلغ الادخار بنجاح ✅',
+                        'Savings amount updated successfully ✅',
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (!mounted) return;
+
+                  _showMessage(
+                    _tr(
+                      'حدث خطأ أثناء تحديث الهدف',
+                      'Error updating savings goal',
+                    ),
+                  );
+                }
+              },
+              child: Text(
+                _tr(
+                  'حفظ',
+                  'Save',
+                ),
+                style: const TextStyle(
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteSavingsGoal(
+    int goalId,
+    String goalName,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            _tr(
+              'حذف هدف الادخار',
+              'Delete Savings Goal',
+            ),
+          ),
+          content: Text(
+            _tr(
+              'هل أنتِ متأكدة من حذف الهدف "$goalName"؟',
+              'Are you sure you want to delete "$goalName"?',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext),
+              child: Text(
+                _tr('إلغاء', 'Cancel'),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              onPressed: () async {
+                await DatabaseHelper.instance
+                    .deleteSavingsGoal(goalId);
+
+                if (!mounted) return;
+
+                Navigator.pop(dialogContext);
+
+                await _loadData();
+
+                if (!mounted) return;
+
+                _showMessage(
+                  _tr(
+                    'تم حذف هدف الادخار',
+                    'Savings goal deleted',
+                  ),
+                );
+              },
+              child: Text(
+                _tr(
+                  'حذف',
+                  'Delete',
+                ),
+                style: const TextStyle(
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -519,9 +1248,6 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         backgroundColor: Colors.transparent,
         actions: [
-          // ==========================================
-          // زر الإشعارات
-          // ==========================================
           Stack(
             children: [
               IconButton(
@@ -531,7 +1257,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 tooltip: 'Notifications',
                 onPressed: _showNotifications,
               ),
-
               if (_unreadNotifications > 0)
                 Positioned(
                   right: 6,
@@ -565,12 +1290,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
-
           IconButton(
             icon: const Icon(Icons.language),
             onPressed: widget.onLanguageChanged,
           ),
-
           IconButton(
             icon: Icon(
               widget.isDarkMode
@@ -579,31 +1302,24 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             onPressed: widget.onThemeChanged,
           ),
-
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
             onPressed: widget.onLogout,
           ),
-
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16.0),
             child: InkWell(
               onTap: _showUserProfile,
               borderRadius: BorderRadius.circular(50),
-              child: const CircleAvatar(
-                backgroundColor: Color(0xFF4A00E0),
-                child: Icon(
-                  Icons.person,
-                  color: Colors.white,
-                ),
+              child: _buildProfileAvatar(
+                radius: 20,
               ),
             ),
           ),
         ],
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -617,12 +1333,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 20),
 
-            // ==========================================
-            // بطاقة الرصيد
-            // ==========================================
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -661,7 +1373,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontSize: 16,
                         ),
                       ),
-
                       IconButton(
                         onPressed: () => setState(
                           () => _showBalance =
@@ -676,9 +1387,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 8),
-
                   Text(
                     _showBalance
                         ? '\$${_balance.toStringAsFixed(2)}'
@@ -689,9 +1398,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   const Row(
                     children: [
                       Icon(
@@ -715,9 +1422,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 30),
 
-            // ==========================================
-            // أزرار العمليات
-            // ==========================================
             Row(
               mainAxisAlignment:
                   MainAxisAlignment.spaceBetween,
@@ -755,12 +1459,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 30),
 
-            // الرسم البياني
             _buildExpenseChart(),
 
-            // ==========================================
-            // البحث
-            // ==========================================
+            const SizedBox(height: 10),
+
+            _buildSavingsGoalsSection(),
+
             Container(
               margin:
                   const EdgeInsets.only(bottom: 20),
@@ -808,9 +1512,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // ==========================================
-            // العمليات الأخيرة
-            // ==========================================
             Row(
               mainAxisAlignment:
                   MainAxisAlignment.spaceBetween,
@@ -879,9 +1580,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // الرسم البياني للمصروفات
-  // ==========================================
   Widget _buildExpenseChart() {
     double totalBills = 0;
     double totalSend = 0;
@@ -942,9 +1640,7 @@ class _HomeScreenState extends State<HomeScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-
           const SizedBox(height: 24),
-
           SizedBox(
             height: 150,
             child: PieChart(
@@ -986,9 +1682,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 24),
-
           Row(
             mainAxisAlignment:
                 MainAxisAlignment.center,
@@ -1035,9 +1729,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // زر العملية
-  // ==========================================
   Widget _buildActionButton(
     BuildContext context,
     IconData icon,
@@ -1113,21 +1804,57 @@ class _HomeScreenState extends State<HomeScreen> {
                       BorderRadius.circular(10),
                 ),
               ),
-
               const SizedBox(height: 24),
 
-              const CircleAvatar(
-                radius: 45,
-                backgroundColor:
-                    Color(0xFF4A00E0),
-                child: Icon(
-                  Icons.person,
-                  size: 50,
-                  color: Colors.white,
+              Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  GestureDetector(
+                    onTap: _pickProfileImage,
+                    child: _buildProfileAvatar(
+                      radius: 45,
+                    ),
+                  ),
+                  Material(
+                    color: const Color(0xFF4A00E0),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      onTap: _pickProfileImage,
+                      customBorder: const CircleBorder(),
+                      child: const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+
+              TextButton.icon(
+                onPressed: _pickProfileImage,
+                icon: const Icon(
+                  Icons.photo_camera,
+                  color: Color(0xFF4A00E0),
+                ),
+                label: Text(
+                  _tr(
+                    'تغيير الصورة الشخصية',
+                    'Change Profile Photo',
+                  ),
+                  style: const TextStyle(
+                    color: Color(0xFF4A00E0),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 6),
 
               Text(
                 _fullName.isEmpty ||
@@ -1139,7 +1866,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               Text(
                 '@${widget.username}',
                 style: const TextStyle(
@@ -1147,9 +1873,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.grey,
                 ),
               ),
-
-              const SizedBox(height: 30),
-
+              const SizedBox(height: 25),
               Expanded(
                 child: ListView(
                   children: [
@@ -1197,9 +1921,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _currentLocation,
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
                     Row(
                       mainAxisAlignment:
                           MainAxisAlignment.spaceEvenly,
@@ -1262,9 +1984,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // تعديل البيانات
-  // ==========================================
   void _showEditProfileDialog() {
     final nameCtrl = TextEditingController(
       text:
@@ -1483,6 +2202,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 await DatabaseHelper.instance
                     .deleteUser(widget.username);
 
+                final prefs =
+                    await SharedPreferences.getInstance();
+
+                await prefs.remove(
+                  'profile_image_${widget.username}',
+                );
+
                 if (!mounted) return;
 
                 Navigator.pop(dialogContext);
@@ -1555,9 +2281,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // إرسال الأموال
-  // ==========================================
   void _showSendDialog() {
     final recipientController =
         TextEditingController();
@@ -1684,9 +2407,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // استقبال الأموال
-  // ==========================================
   void _showReceiveDialog() {
     final amountController =
         TextEditingController();
@@ -1820,9 +2540,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // الفواتير
-  // ==========================================
   void _showBillsDialog() {
     showModalBottomSheet(
       context: context,
@@ -1869,7 +2586,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
               _buildJeebBillOption(
                 sheetContext,
                 Icons.bolt,
@@ -1879,7 +2595,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 Colors.orange,
               ),
-
               _buildJeebBillOption(
                 sheetContext,
                 Icons.water_drop,
@@ -1889,7 +2604,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 Colors.blue,
               ),
-
               _buildJeebBillOption(
                 sheetContext,
                 Icons.wifi,
@@ -1899,7 +2613,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 Colors.green,
               ),
-
               _buildJeebBillOption(
                 sheetContext,
                 Icons.phone_android,
@@ -1909,7 +2622,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 Colors.purple,
               ),
-
               const SizedBox(height: 20),
             ],
           ),
@@ -1995,9 +2707,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // دفع الفاتورة
-  // ==========================================
   void _showBillAmountDialog(
     String billName,
   ) {
@@ -2093,9 +2802,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // شحن المحفظة
-  // ==========================================
   void _showTopUpDialog() {
     showDialog(
       context: context,
@@ -2179,9 +2885,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // جميع العمليات
-  // ==========================================
   void _showAllTransactions() {
     showModalBottomSheet(
       context: context,
@@ -2253,9 +2956,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // عنصر العملية
-  // ==========================================
   Widget _buildTransactionItem(
     String title,
     String date,
@@ -2322,9 +3022,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ==========================================
-  // رسالة
-  // ==========================================
   void _showMessage(
     String message,
   ) {
